@@ -1,0 +1,5 @@
+name = Registration Certificate
+description = Automatic certificate creation based on retistration status.
+core = 7.x
+package = Registration
+dependencies[] = registration, certificate

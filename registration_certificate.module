@@ -1,0 +1,174 @@
+<?php
+
+/*
+ * Implements hook_permission().
+ * Añade permisos para usar el sistema de certificación automática.
+ */
+function registration_certificate_permission(){
+  return array(
+    'access registration certificates' => array(
+      'title' => t('Access registration certificates'),
+      'description' => t('Create and send registration certification.'),
+    ),
+  );
+}
+
+/*
+ * Implements hook_menu().
+ * Añade TAB en el menu de usuario para acceder al listado de certificados.
+*/
+function registration_certificate_menu(){
+  $items = array();
+
+  $items['user/%user/certificados'] = array(
+    'title' => 'Certificados y diplomas',
+    'page callback' => 'registration_certificate_page_function',
+    'page arguments' => array(1),
+    'access callback' => 'user_access',
+    'access arguments' => array('access registration certificates'),
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  return $items;
+}
+
+/*
+ * Returns custom content to Drupal
+ */
+function registration_certificate_page_function(){
+  return theme('registration_certificate_custom_template');
+}
+
+/*
+ * Implement hook_theme().
+ */
+function registration_certificate_certificado_theme(){
+    return array(
+        'registration_certificate_custom_template' => array(
+            // file name will be custom-page.tpl.php
+            'template' => 'registration-certificate-custom-page',
+        ),
+    );
+}
+
+
+/**
+ * Implements certificate_map_options().
+ *
+ * Provide a list of options to the user that can be mapped to certificate
+ * templates.
+ *
+ * @return Array of mapping sets.
+ */
+function registration_certificate_certificate_map_options() {
+  $options = array(
+    'certificate' => 'Certificate',
+  );
+
+  return array(
+    'registration_certificate' => array(
+      'title' => 'Registration Certificate Mappings',
+      'description' => "Select Registration Certificate Mapping",
+      'options' => $options,
+    ),
+  );
+}
+
+/**
+ * Implements certificate_map().
+ *
+ * Return the key of the mapping to use.
+ *
+ * @return String
+ *   Key of matched mapping.
+ */
+function registration_certificate_certificate_map($node, $user, $map_type, $options) {
+  if ($map_type == 'registration_certificate') {
+    $user_certified = FALSE;
+    $user_certified = registration_certificate_return_certified_user($user->uid, $node->nid);
+
+    return 'certificate';
+  }
+}
+
+/**
+ * Implements hook_access_certificate().
+ */
+function registration_certificate_access_certificate($node, $user) {
+
+  //Comprobar si el usuario se ha registrado en el curso y el estado de registro es "certificado".
+  $user_certified = registration_certificate_return_certified_users($user->uid, $node->nid);
+
+  if ($user_certified) {
+    return TRUE;
+  }
+}
+
+
+/**
+ * Helper function
+ *
+ * @return (boolean)
+ * Devuelve true si el usuario está registrado en el curso y el estado de registro es "certificado".
+ */
+function registration_certificate_return_certified_users($uid, $entity_id) {
+  $result = FALSE;
+
+  $query = db_select('registration', 'r')
+    ->fields('r', array('registration_id'))
+    ->condition('entity_id', $entity_id)
+    ->condition('user_uid', $uid)
+    ->condition('state', array('certificate',),'IN')
+    ->execute()
+    ->fetchField();
+  if ($query) {
+    $result = TRUE;
+  }
+
+  return $result;
+}
+
+/**
+ * @file
+ * Provides special token to use with pathauto.
+ *
+ * @see httx://drupal.org/node/1308488
+ */
+
+/**
+ * Provide information about our custom placeholder/token.
+ *
+ * @see httx://api.drupal.org/api/drupal/modules--system--system.api.php/function/hook_token_info/7
+ * @see httx://api.lullabot.com/token_example_token_info/7
+ * @return array
+ *   An associative array of available tokens and token types.
+ */
+function registration_certificate_token_info() {
+  // Define tokens
+  $user_sexo_interesado['user_sexo_interesado'] =  array(
+    'name' => t("Ponente: horas"),
+    'description' => t("Número de horas impartidas por el ponente."),
+  );
+  $certificate_alumno_dias['cert_alumno_dias'] =  array(
+    'name' => t("Alumno: días concretos"),
+    'description' => t("Días que el alumno ha asistido."),
+  );
+  $certificate_ponente_creditos['cert_ponente_creditos'] =  array(
+    'name' => t("Ponente: créditos"),
+    'description' => t("Número de créditos impartidos por el ponente."),
+  );
+  $certificate_ponente_horas['cert_ponente_horas'] =  array(
+    'name' => t("Ponente: horas"),
+    'description' => t("Número de horas impartidas por el ponente."),
+  );
+
+  // Return associative array of tokens & token types
+  return array(
+    'tokens' => array(
+      //'node' => $node_trim,
+      //'node' => $certificate_ponente_creditos,
+    ),
+  );
+}
+
+
